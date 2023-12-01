@@ -1,7 +1,11 @@
 use std::str::FromStr;
 
 use nom::{
-    branch::alt, bytes::complete::tag, character::complete::anychar, combinator::map, multi::many0,
+    branch::alt,
+    bytes::complete::{tag, take},
+    character::complete::anychar,
+    combinator::{map, map_opt},
+    multi::many0,
     IResult,
 };
 use thiserror::Error;
@@ -17,38 +21,71 @@ enum CalibrationParseError {
     NumbersNotFound,
 }
 
-fn digit_as_words(input: &str) -> IResult<&str, u32> {
+fn digit_as_words(input: &str) -> IResult<&str, Vec<u8>> {
     alt((
-        map(tag("one"), |_: &str| 1),
-        map(tag("two"), |_: &str| 2),
-        map(tag("three"), |_: &str| 3),
-        map(tag("four"), |_: &str| 4),
-        map(tag("five"), |_: &str| 5),
-        map(tag("six"), |_: &str| 6),
-        map(tag("seven"), |_: &str| 7),
-        map(tag("eight"), |_: &str| 8),
-        map(tag("nine"), |_: &str| 9),
+        // 1
+        map(tag("oneight"), |_: &str| vec![1, 8]),
+        // 2
+        map(tag("twone"), |_: &str| vec![2, 1]),
+        // 3
+        map(tag("threeight"), |_: &str| vec![3, 8]),
+        // 4
+        // -
+        // 5
+        map(tag("fiveight"), |_: &str| vec![5, 8]),
+        // 6
+        // -
+        // 7
+        map(tag("sevenine"), |_: &str| vec![7, 9]),
+        // 8
+        map(tag("eighthree"), |_: &str| vec![8, 3]),
+        map(tag("eightwo"), |_: &str| vec![8, 2]),
+        // 9
+        map(tag("nineight"), |_: &str| vec![9, 8]),
+        // regular check
+        map(tag("one"), |_: &str| vec![1]),
+        map(tag("two"), |_: &str| vec![2]),
+        map(tag("three"), |_: &str| vec![3]),
+        map(tag("four"), |_: &str| vec![4]),
+        map(tag("five"), |_: &str| vec![5]),
+        map(tag("six"), |_: &str| vec![6]),
+        map(tag("seven"), |_: &str| vec![7]),
+        map(tag("eight"), |_: &str| vec![8]),
+        map(tag("nine"), |_: &str| vec![9]),
     ))(input)
 }
 
-fn parse_numbers(input: &str) -> IResult<&str, Vec<u32>> {
+fn char_to_digit(c: &str) -> Option<u8> {
+    match c {
+        "1" => Some(1),
+        "2" => Some(2),
+        "3" => Some(3),
+        "4" => Some(4),
+        "5" => Some(5),
+        "6" => Some(6),
+        "7" => Some(7),
+        "8" => Some(8),
+        "9" => Some(9),
+        _ => None,
+    }
+}
+
+fn digit(input: &str) -> IResult<&str, u8> {
+    map_opt(take(1usize), char_to_digit)(input)
+}
+
+fn parse_numbers(input: &str) -> IResult<&str, Vec<u8>> {
     let (input, nums) = many0(alt((
-        map(digit_as_words, |n: u32| Some(n)),
-        map(anychar, |c: char| match c {
-            '1' => Some(1),
-            '2' => Some(2),
-            '3' => Some(3),
-            '4' => Some(4),
-            '5' => Some(5),
-            '6' => Some(6),
-            '7' => Some(7),
-            '8' => Some(8),
-            '9' => Some(9),
-            _ => None,
-        }),
+        map(digit_as_words, |n: Vec<u8>| Some(n)),
+        map(digit, |n: u8| Some(vec![n])),
+        map(anychar, |_| None),
     )))(input)?;
 
-    let nums = nums.into_iter().filter_map(|n| n).collect::<Vec<_>>();
+    let nums = nums
+        .into_iter()
+        .flat_map(|nums| nums.into_iter())
+        .flatten()
+        .collect::<Vec<_>>();
 
     Ok((input, nums))
 }
@@ -61,7 +98,7 @@ impl FromStr for Calibration {
 
         let (_, nums) = parse_numbers(s).ok().unwrap();
 
-        if nums.len() == 0 {
+        if nums.is_empty() {
             return Err(NumbersNotFound);
         }
 
@@ -86,12 +123,11 @@ fn main() {
             line.parse::<Calibration>()
                 .map_err(|e| {
                     println!("error `{e}` parsing `{line}`");
-                    ()
                 })
                 .map(|Calibration { value }| value)
                 .ok()
         })
-        .fold(0, |acc, b| acc + b);
+        .sum::<usize>();
 
     println!("Sum: {sum}");
 }
@@ -105,6 +141,7 @@ mod tests {
         let num = "abc".parse::<Calibration>();
         assert_eq!(num, Err(NumbersNotFound));
 
+        // part 1 examples
         let num = "1abc2".parse::<Calibration>();
         assert_eq!(num, Ok(Calibration { value: 12 }));
 
@@ -117,6 +154,7 @@ mod tests {
         let num = "treb7uchet".parse::<Calibration>();
         assert_eq!(num, Ok(Calibration { value: 77 }));
 
+        // part 2 examples
         let num = "two1nine".parse::<Calibration>();
         assert_eq!(num, Ok(Calibration { value: 29 }));
 
@@ -140,5 +178,8 @@ mod tests {
 
         let num = "13".parse::<Calibration>();
         assert_eq!(num, Ok(Calibration { value: 13 }));
+
+        let num = "nnnineon7nnine".parse::<Calibration>();
+        assert_eq!(num, Ok(Calibration { value: 99 }));
     }
 }

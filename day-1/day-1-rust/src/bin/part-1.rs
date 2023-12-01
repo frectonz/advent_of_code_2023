@@ -24,7 +24,7 @@ impl FromStr for Calibration {
             .filter_map(|ch| ch.to_digit(10))
             .collect::<Vec<_>>();
 
-        if nums.len() == 0 {
+        if nums.is_empty() {
             return Err(NumbersNotFound);
         }
 
@@ -48,7 +48,7 @@ fn main() {
             line.parse::<Calibration>()
                 .map_err(|e| {
                     println!("error `{e}` parsing `{line}`");
-                    ()
+                    
                 })
                 .map(|Calibration { value }| value)
                 .ok()
