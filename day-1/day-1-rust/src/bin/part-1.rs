@@ -40,7 +40,7 @@ impl FromStr for Calibration {
 }
 
 fn main() {
-    let input = include_str!("part-1-input.txt");
+    let input = include_str!("input.txt");
 
     let sum = input
         .lines()
