@@ -11,10 +11,18 @@ type alias Game =
     }
 
 
+type alias CubeSet =
+    List Cube
+
+
 type Cube
     = Red Int
     | Green Int
     | Blue Int
+
+
+type alias Constraint =
+    { red : Int, green : Int, blue : Int }
 
 
 getRed : Cube -> Int
@@ -56,37 +64,14 @@ getGreen c =
             x
 
 
-type alias CubeSet =
-    List Cube
-
-
-type alias Constraint =
-    { red : Int, green : Int, blue : Int }
-
-
-cube : Parser Cube
-cube =
-    succeed (\num cubeType -> cubeType num)
+game : Parser Game
+game =
+    succeed Game
+        |. keyword "Game"
         |. spaces
         |= int
-        |. spaces
-        |= oneOf
-            [ Parser.map (\_ -> Red) (keyword "red")
-            , Parser.map (\_ -> Blue) (keyword "blue")
-            , Parser.map (\_ -> Green) (keyword "green")
-            ]
-
-
-cubeSet : Parser CubeSet
-cubeSet =
-    Parser.sequence
-        { start = ""
-        , separator = ","
-        , end = ""
-        , spaces = spaces
-        , item = cube
-        , trailing = Forbidden
-        }
+        |. symbol ":"
+        |= cubeSets
 
 
 cubeSets : Parser (List CubeSet)
@@ -101,14 +86,29 @@ cubeSets =
         }
 
 
-game : Parser Game
-game =
-    succeed Game
-        |. keyword "Game"
+cubeSet : Parser CubeSet
+cubeSet =
+    Parser.sequence
+        { start = ""
+        , separator = ","
+        , end = ""
+        , spaces = spaces
+        , item = cube
+        , trailing = Forbidden
+        }
+
+
+cube : Parser Cube
+cube =
+    succeed (\num cubeType -> cubeType num)
         |. spaces
         |= int
-        |. symbol ":"
-        |= cubeSets
+        |. spaces
+        |= oneOf
+            [ Parser.map (\_ -> Red) (keyword "red")
+            , Parser.map (\_ -> Blue) (keyword "blue")
+            , Parser.map (\_ -> Green) (keyword "green")
+            ]
 
 
 parseInput : String -> List Game
