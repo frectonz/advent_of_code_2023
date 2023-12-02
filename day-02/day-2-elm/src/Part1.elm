@@ -148,7 +148,7 @@ main : Html msg
 main =
     let
         games =
-            parseInput Input.part1
+            parseInput Input.input
 
         possible =
             possibleGames { red = 12, green = 13, blue = 14 } games
