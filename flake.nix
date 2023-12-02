@@ -24,6 +24,11 @@
           buildInputs = [
             rust-bin.stable.latest.default
             rust-analyzer
+
+            sfz
+            elmPackages.elm
+            elmPackages.elm-format
+            elmPackages.elm-language-server
           ];
         };
 
