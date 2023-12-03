@@ -29,6 +29,14 @@
             elmPackages.elm
             elmPackages.elm-format
             elmPackages.elm-language-server
+
+            ocaml
+            dune_3
+            ocamlPackages.ocaml-lsp
+            ocamlPackages.ocamlformat
+
+            ocamlPackages.ppx_show
+            ocamlPackages.ppx_deriving
           ];
         };
 
