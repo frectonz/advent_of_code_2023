@@ -35,8 +35,8 @@
             ocamlPackages.ocaml-lsp
             ocamlPackages.ocamlformat
 
-            ocamlPackages.ppx_show
-            ocamlPackages.ppx_deriving
+            go
+            gopls
           ];
         };
 
