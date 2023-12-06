@@ -26,7 +26,7 @@ fn parse_races(input: &str) -> IResult<&str, Vec<Race>> {
 
     let races = record_distances
         .into_iter()
-        .zip(durations.into_iter())
+        .zip(durations)
         .map(|(record_distance, duration)| Race {
             duration,
             record_distance,
@@ -44,11 +44,10 @@ fn main() {
         .into_iter()
         .map(|race| {
             (0..race.duration)
-                .into_iter()
                 .map(|duration| {
                     let time_in_race = race.duration - duration;
-                    let distance = time_in_race * duration;
-                    distance
+
+                    time_in_race * duration
                 })
                 .filter(|distance| *distance > race.record_distance)
                 .count()

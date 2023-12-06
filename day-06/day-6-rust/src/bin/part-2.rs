@@ -21,11 +21,14 @@ fn parse_race(input: &str) -> IResult<&str, Race> {
             multispace1,
         )
     };
+    use std::fmt::Write;
     let values = || {
         combinator::map_res(values(), |nums: Vec<u64>| {
             nums.into_iter()
-                .map(|n| format!("{n}"))
-                .collect::<String>()
+                .fold(String::new(), |mut acc, n| {
+                    let _ = write!(acc, "{n}");
+                    acc
+                })
                 .parse::<u64>()
         })
     };
@@ -47,11 +50,10 @@ fn main() {
     let (_, race) = parse_race(input).expect("failed to parse races");
 
     let answer = (0..race.duration)
-        .into_iter()
         .map(|duration| {
             let time_in_race = race.duration - duration;
-            let distance = time_in_race * duration;
-            distance
+
+            time_in_race * duration
         })
         .filter(|distance| *distance > race.record_distance)
         .count();
