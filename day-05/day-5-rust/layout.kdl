@@ -1,7 +1,7 @@
 layout {
     pane {
-        pane command="fish"
-        pane command="btm" {
+        pane command="fish" borderless=true
+        pane command="btm" borderless=true {
             args "-C" "btm.toml"
         }
     }
