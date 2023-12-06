@@ -2,12 +2,6 @@ use std::{collections::HashMap, str::FromStr};
 
 #[derive(Debug, Default)]
 struct Almanac {
-    seed_to_soil: HashMap<usize, usize>,
-    soil_to_fertilizer: HashMap<usize, usize>,
-    fertilizer_to_water: HashMap<usize, usize>,
-    water_to_light: HashMap<usize, usize>,
-    light_to_temperature: HashMap<usize, usize>,
-    temperature_to_humidity: HashMap<usize, usize>,
     humidity_to_location: HashMap<usize, usize>,
 }
 
@@ -28,34 +22,31 @@ impl FromStr for Almanac {
         let soil_to_fertilizer = make_map(
             input[2],
             "soil-to-fertilizer map:\n",
-            seed_to_soil.values().map(|v| *v).collect::<Vec<_>>(),
+            seed_to_soil.values().copied().collect::<Vec<_>>(),
         );
 
         let fertilizer_to_water = make_map(
             input[3],
             "fertilizer-to-water map:\n",
-            soil_to_fertilizer.values().map(|v| *v).collect::<Vec<_>>(),
+            soil_to_fertilizer.values().copied().collect::<Vec<_>>(),
         );
 
         let water_to_light = make_map(
             input[4],
             "water-to-light map:\n",
-            fertilizer_to_water.values().map(|v| *v).collect::<Vec<_>>(),
+            fertilizer_to_water.values().copied().collect::<Vec<_>>(),
         );
 
         let light_to_temperature = make_map(
             input[5],
             "light-to-temperature map:\n",
-            water_to_light.values().map(|v| *v).collect::<Vec<_>>(),
+            water_to_light.values().copied().collect::<Vec<_>>(),
         );
 
         let temperature_to_humidity = make_map(
             input[6],
             "temperature-to-humidity map:\n",
-            light_to_temperature
-                .values()
-                .map(|v| *v)
-                .collect::<Vec<_>>(),
+            light_to_temperature.values().copied().collect::<Vec<_>>(),
         );
 
         let humidity_to_location = make_map(
@@ -63,17 +54,11 @@ impl FromStr for Almanac {
             "humidity-to-location map:\n",
             temperature_to_humidity
                 .values()
-                .map(|v| *v)
+                .copied()
                 .collect::<Vec<_>>(),
         );
 
         Ok(Self {
-            seed_to_soil,
-            soil_to_fertilizer,
-            fertilizer_to_water,
-            water_to_light,
-            light_to_temperature,
-            temperature_to_humidity,
             humidity_to_location,
         })
     }
@@ -97,12 +82,12 @@ fn make_map(input: &str, header: &str, keys: Vec<usize>) -> HashMap<usize, usize
                 map.next().unwrap(),
             )
         })
-        .map(|(dest_start, src_start, range)| {
+        .flat_map(|(dest_start, src_start, range)| {
             let src_range = src_start..(src_start + range);
             let dest_range = dest_start..(dest_start + range);
 
             keys.iter()
-                .map(|key| *key)
+                .copied()
                 .filter(move |key| src_range.contains(key))
                 .filter_map(move |key| {
                     let value = dest_start + (key - src_start);
@@ -114,7 +99,6 @@ fn make_map(input: &str, header: &str, keys: Vec<usize>) -> HashMap<usize, usize
                     }
                 })
         })
-        .flatten()
         .filter(|(key, _)| keys.contains(key))
         .collect::<HashMap<_, _>>();
 

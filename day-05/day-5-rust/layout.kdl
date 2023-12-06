@@ -1,0 +1,8 @@
+layout {
+    pane {
+        pane command="fish"
+        pane command="btm" {
+            args "-C" "btm.toml"
+        }
+    }
+}

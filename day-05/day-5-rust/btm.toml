@@ -1,0 +1,5 @@
+[[row]]
+  [[row.child]]
+  ratio = 2
+  type="cpu"
+
