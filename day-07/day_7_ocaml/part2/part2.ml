@@ -1,5 +1,4 @@
 [@@@warnerror "-unused-value-declaration"]
-[@@@warnerror "-unused-var"]
 
 module String = struct
   include String
@@ -11,6 +10,16 @@ module List = struct
   include List
 
   let sum = List.fold_left ( + ) 0
+
+  let counts arr =
+    List.fold_left
+      (fun acc v ->
+        if List.exists (fun (key, _) -> key = v) acc then
+          acc
+          |> List.map (fun (key, c) ->
+                 if key = v then (key, c + 1) else (key, c))
+        else (v, 1) :: acc)
+      [] arr
 end
 
 module Card = struct
@@ -53,7 +62,7 @@ module Card = struct
     | A -> 13
     | K -> 12
     | Q -> 11
-    | J -> 0
+    | J -> 10
     | T -> 9
     | N9 -> 8
     | N8 -> 7
@@ -65,8 +74,6 @@ module Card = struct
     | N2 -> 1
 
   let cmp x y = to_int x - to_int y
-  let equal x y = cmp x y = 0 || y = J
-  let all = [ A; K; Q; J; T; N9; N8; N7; N6; N5; N4; N3; N2 ]
 end
 
 module HandType = struct
@@ -90,85 +97,23 @@ module HandType = struct
 
   let cmp x y = to_int x - to_int y
 
-  let five_of_a_kind (c1, c2, c3, c4, c5) =
-    let hand = [ c1; c2; c3; c4; c5 ] in
-    let card =
-      List.find_opt (fun c -> c <> Card.J) hand |> Option.value ~default:c1
+  exception Unreachable
+
+  let hand_type (c1, c2, c3, c4, c5) =
+    let hand =
+      List.counts [ c1; c2; c3; c4; c5 ]
+      |> List.map (fun (_, c) -> c)
+      |> List.sort Int.compare
     in
-    List.for_all (fun c -> c = card || c = Card.J) hand
-
-  let four_of_a_kind (c1, c2, c3, c4, c5) =
-    let hand = [ c1; c2; c3; c4; c5 ] in
-    Card.all
-    |> List.exists (fun card ->
-           hand
-           |> List.filter (fun c -> card = c || c = Card.J)
-           |> List.length |> ( = ) 4)
-
-  let full_house (c1, c2, c3, c4, c5) =
-    let hand = [ c1; c2; c3; c4; c5 ] in
-    Card.all
-    |> List.exists (fun card ->
-           let matching_cards =
-             hand |> List.filter (fun c -> card = c || c = Card.J)
-           in
-           let left =
-             hand
-             |> List.filter (fun hand_c ->
-                    matching_cards
-                    |> List.exists (fun match_c -> hand_c <> match_c))
-           in
-           List.length matching_cards = 3
-           && List.length left = 2
-           &&
-           let first = List.nth left 0 in
-           let second = List.nth left 1 in
-           first = second || first = Card.J || second = Card.J)
-
-  let three_of_a_kind (c1, c2, c3, c4, c5) =
-    let hand = [ c1; c2; c3; c4; c5 ] in
-    Card.all
-    |> List.exists (fun card ->
-           hand
-           |> List.filter (fun c -> card = c || c = Card.J)
-           |> List.length |> ( = ) 3)
-
-  let two_pair (c1, c2, c3, c4, c5) =
-    let hand = [ c1; c2; c3; c4; c5 ] |> List.mapi (fun i x -> (i, x)) in
-    Card.all
-    |> List.exists (fun card ->
-           let first_pair =
-             hand |> List.filter (fun (_, c) -> card = c || c = Card.J)
-           in
-           let left =
-             hand
-             |> List.filter (fun (i, _) ->
-                    first_pair
-                    |> List.exists (fun (idx, _) -> idx = i)
-                    |> not)
-           in
-           let second_pair =
-             left |> List.filter (fun (_, c) -> card = c || c = Card.J)
-           in
-           List.length first_pair = 2
-           && List.length second_pair = 2)
-
-  let one_pair (c1, c2, c3, c4, c5) =
-    let hand = [ c1; c2; c3; c4; c5 ] in
-    Card.all
-    |> List.exists (fun card ->
-           hand
-           |> List.filter (fun c -> card = c || c = Card.J)
-           |> List.length |> ( = ) 2)
-
-  let hand_type hand =
-    if five_of_a_kind hand then FiveOfAKind
-    else if four_of_a_kind hand then FourOfAKind
-    else if full_house hand then FullHouse
-    else if three_of_a_kind hand then ThreeOfAKind
-    else if two_pair hand then TwoPair
-    else if one_pair hand then OnePair
-    else HighCard
+    match hand with
+    | [ 5 ] -> FiveOfAKind
+    | [ 1; 4 ] -> FourOfAKind
+    | [ 2; 3 ] -> FullHouse
+    | [ 1; 1; 3 ] -> ThreeOfAKind
+    | [ 1; 2; 2 ] -> TwoPair
+    | [ 1; 1; 1; 2 ] -> OnePair
+    | [ 1; 1; 1; 1; 1 ] -> HighCard
+    | _ -> raise Unreachable
 
   let show = function
     | FiveOfAKind -> "FiveOfAKind"
@@ -227,16 +172,16 @@ module Hand = struct
 
   let cmp_cards x y =
     let cmp_first = Card.cmp (first_card x) (first_card y) in
-    if cmp_first <> 0 then cmp_first
+    if cmp_first != 0 then cmp_first
     else
       let cmp_second = Card.cmp (second_card x) (second_card y) in
-      if cmp_second <> 0 then cmp_second
+      if cmp_second != 0 then cmp_second
       else
         let cmp_third = Card.cmp (third_card x) (third_card y) in
-        if cmp_third <> 0 then cmp_third
+        if cmp_third != 0 then cmp_third
         else
           let cmp_fourth = Card.cmp (fourth_card x) (fourth_card y) in
-          if cmp_fourth <> 0 then cmp_fourth
+          if cmp_fourth != 0 then cmp_fourth
           else Card.cmp (fifth_card x) (fifth_card y)
 
   let cmp x y =
@@ -247,11 +192,11 @@ end
 let read_file file = In_channel.with_open_bin file In_channel.input_all
 
 let () =
-  read_file "test.txt" |> String.trim |> String.lines |> List.map Hand.parse
+  read_file "input.txt" |> String.trim |> String.lines |> List.map Hand.parse
   |> List.sort Hand.cmp
   |> List.mapi (fun i h ->
-         print_endline (Hand.show h);
-         print_endline (Hand.hand h |> HandType.hand_type |> HandType.show);
-         print_newline ();
+         (*print_endline (Hand.show h);
+           print_endline (Hand.hand h |> HandType.hand_type |> HandType.show);
+           print_newline (); *)
          Hand.bid h * (i + 1))
   |> List.sum |> string_of_int |> print_endline

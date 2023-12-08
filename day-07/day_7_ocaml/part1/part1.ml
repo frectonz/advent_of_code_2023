@@ -9,8 +9,17 @@ end
 module List = struct
   include List
 
-  let any f l = List.find_opt f l |> Option.is_some
   let sum = List.fold_left ( + ) 0
+
+  let counts arr =
+    List.fold_left
+      (fun acc v ->
+        if List.exists (fun (key, _) -> key = v) acc then
+          acc
+          |> List.map (fun (key, c) ->
+                 if key = v then (key, c + 1) else (key, c))
+        else (v, 1) :: acc)
+      [] arr
 end
 
 module Card = struct
@@ -65,8 +74,6 @@ module Card = struct
     | N2 -> 1
 
   let cmp x y = to_int x - to_int y
-  let equal x y = cmp x y = 0
-  let all = [ A; K; Q; J; T; N9; N8; N7; N6; N5; N4; N3; N2 ]
 end
 
 module HandType = struct
@@ -90,27 +97,23 @@ module HandType = struct
 
   let cmp x y = to_int x - to_int y
 
+  exception Unreachable
+
   let hand_type (c1, c2, c3, c4, c5) =
-    let hand = [ c1; c2; c3; c4; c5 ] in
-    let matching x =
-      Card.all
-      |> List.any (fun c ->
-             hand |> List.filter (Card.equal c) |> List.length |> Int.equal x)
+    let hand =
+      List.counts [ c1; c2; c3; c4; c5 ]
+      |> List.map (fun (_, c) -> c)
+      |> List.sort Int.compare
     in
-    let count_matching x =
-      Card.all
-      |> List.filter (fun c ->
-             hand |> List.filter (Card.equal c) |> List.length |> Int.equal x)
-      |> List.length
-    in
-    let five_of_a_kind = hand |> List.for_all (Card.equal c1) in
-    if five_of_a_kind then FiveOfAKind
-    else if matching 4 then FourOfAKind
-    else if matching 3 && matching 2 then FullHouse
-    else if matching 3 then ThreeOfAKind
-    else if count_matching 2 = 2 then TwoPair
-    else if matching 2 then OnePair
-    else HighCard
+    match hand with
+    | [ 5 ] -> FiveOfAKind
+    | [ 1; 4 ] -> FourOfAKind
+    | [ 2; 3 ] -> FullHouse
+    | [ 1; 1; 3 ] -> ThreeOfAKind
+    | [ 1; 2; 2 ] -> TwoPair
+    | [ 1; 1; 1; 2 ] -> OnePair
+    | [ 1; 1; 1; 1; 1 ] -> HighCard
+    | _ -> raise Unreachable
 
   let show = function
     | FiveOfAKind -> "FiveOfAKind"
@@ -192,8 +195,8 @@ let () =
   read_file "input.txt" |> String.trim |> String.lines |> List.map Hand.parse
   |> List.sort Hand.cmp
   |> List.mapi (fun i h ->
-         print_endline (Hand.show h);
-         print_endline (Hand.hand h |> HandType.hand_type |> HandType.show);
-         print_newline ();
+         (*print_endline (Hand.show h);
+           print_endline (Hand.hand h |> HandType.hand_type |> HandType.show);
+           print_newline (); *)
          Hand.bid h * (i + 1))
   |> List.sum |> string_of_int |> print_endline
