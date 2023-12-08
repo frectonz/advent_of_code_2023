@@ -20,6 +20,19 @@ module List = struct
                  if key = v then (key, c + 1) else (key, c))
         else (v, 1) :: acc)
       [] arr
+
+  type position = First | Middle | Last | Only
+
+  let with_position f arr =
+    match arr with
+    | [] -> []
+    | [ x ] -> [ f (Only, x) ]
+    | _ ->
+        arr
+        |> List.mapi (fun i v ->
+               if i = 0 then f (First, v)
+               else if i = List.length arr - 1 then f (Last, v)
+               else f (Middle, v))
 end
 
 module Card = struct
@@ -62,7 +75,7 @@ module Card = struct
     | A -> 13
     | K -> 12
     | Q -> 11
-    | J -> 10
+    | J -> 0
     | T -> 9
     | N9 -> 8
     | N8 -> 7
@@ -100,20 +113,36 @@ module HandType = struct
   exception Unreachable
 
   let hand_type (c1, c2, c3, c4, c5) =
-    let hand =
-      List.counts [ c1; c2; c3; c4; c5 ]
-      |> List.map (fun (_, c) -> c)
-      |> List.sort Int.compare
+    let hand = List.counts [ c1; c2; c3; c4; c5 ] in
+    let joker_count =
+      hand
+      |> List.find_opt (fun (c, _) -> c = Card.J)
+      |> Option.map (fun (_, x) -> x)
+      |> Option.value ~default:0
     in
-    match hand with
-    | [ 5 ] -> FiveOfAKind
-    | [ 1; 4 ] -> FourOfAKind
-    | [ 2; 3 ] -> FullHouse
-    | [ 1; 1; 3 ] -> ThreeOfAKind
-    | [ 1; 2; 2 ] -> TwoPair
-    | [ 1; 1; 1; 2 ] -> OnePair
-    | [ 1; 1; 1; 1; 1 ] -> HighCard
-    | _ -> raise Unreachable
+    if joker_count = 5 then FiveOfAKind
+    else
+      let hand =
+        if joker_count = 0 then
+          hand |> List.map (fun (_, c) -> c) |> List.sort Int.compare
+        else
+          hand
+          |> List.filter (fun (k, _) -> k <> Card.J)
+          |> List.map (fun (_, c) -> c)
+          |> List.sort Int.compare
+          |> List.with_position (function
+               | (List.Last | List.Only), value -> value + joker_count
+               | _, value -> value)
+      in
+      match hand with
+      | [ 5 ] -> FiveOfAKind
+      | [ 1; 4 ] -> FourOfAKind
+      | [ 2; 3 ] -> FullHouse
+      | [ 1; 1; 3 ] -> ThreeOfAKind
+      | [ 1; 2; 2 ] -> TwoPair
+      | [ 1; 1; 1; 2 ] -> OnePair
+      | [ 1; 1; 1; 1; 1 ] -> HighCard
+      | _ -> raise Unreachable
 
   let show = function
     | FiveOfAKind -> "FiveOfAKind"
