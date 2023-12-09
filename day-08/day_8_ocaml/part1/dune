@@ -1,3 +1,4 @@
 (executable
  (public_name part1)
- (name part1))
+ (name part1)
+ (libraries str))
