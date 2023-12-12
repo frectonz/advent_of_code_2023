@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --watch main.ts",
-    "part1": "deno run --allow-read main.ts"
+    "part1": "deno run --allow-read part1.ts",
+    "part2": "deno run --allow-read part2.ts"
   }
 }
