@@ -1,6 +1,8 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 
 use petgraph::{algo::all_simple_paths, Graph};
+
+type Node = ((usize, usize), Tile);
 
 #[derive(Debug)]
 struct Grid {
@@ -66,8 +68,7 @@ impl Grid {
             .collect()
     }
 
-    fn process(self) -> usize {
-        type Node = ((usize, usize), Tile);
+    fn process(self) -> isize {
         let mut graph = Graph::<Node, usize>::new();
         let mut node_indexes = HashMap::new();
 
@@ -106,59 +107,29 @@ impl Grid {
                     .map(|(key, _)| key)
                     .cloned()
             })
-            .collect::<HashSet<Node>>();
+            .collect::<Vec<Node>>();
 
-        let mut status = Status::Out;
-
-        self.tiles
-            .into_iter()
-            .filter(|tile| {
-                let col = tile.0 .1;
-                if col == 0 {
-                    status = Status::Out;
-                }
-
-                if path.contains(tile) {
-                    if [
-                        Tile::Start,
-                        Tile::NorthSouth,
-                        Tile::SouthWest,
-                        Tile::SouthEast,
-                    ]
-                    .contains(&tile.1)
-                    {
-                        status = status.flip();
-                    }
-                    false
-                } else {
-                    status.is_in()
-                }
-            })
-            .count()
+        let area = shoelace_algorithm(&path);
+        picks_theorem(area, path.len() as isize)
     }
 }
 
-enum Status {
-    In,
-    Out,
+fn picks_theorem(area: isize, boundary: isize) -> isize {
+    area - (boundary / 2) + 1
 }
 
-impl Status {
-    fn flip(&self) -> Self {
-        use Status::*;
-        match self {
-            In => Out,
-            Out => In,
-        }
+fn shoelace_algorithm(vertices: &[Node]) -> isize {
+    let mut area: isize = 0;
+
+    for w in vertices.windows(2) {
+        let ((row_1, col_1), _) = w[0];
+        let ((row_2, col_2), _) = w[1];
+
+        area += (row_1 * col_2) as isize;
+        area -= (col_1 * row_2) as isize;
     }
 
-    fn is_in(&self) -> bool {
-        use Status::*;
-        match self {
-            In => true,
-            Out => false,
-        }
-    }
+    isize::abs(area) / 2
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
