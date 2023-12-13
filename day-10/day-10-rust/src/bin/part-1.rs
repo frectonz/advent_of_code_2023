@@ -1,6 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs,
+};
 
-use petgraph::{algo::maximum_matching, dot, Graph};
+use petgraph::{algo::all_simple_paths, dot, Graph};
 
 #[derive(Debug)]
 struct Grid {
@@ -66,7 +69,7 @@ impl Grid {
             .collect()
     }
 
-    fn process(&self) {
+    fn process(self) {
         type Node = ((usize, usize), Tile);
         let mut graph = Graph::<Node, usize>::new();
         let mut node_indexes = HashMap::new();
@@ -86,11 +89,21 @@ impl Grid {
         }
 
         let graph_dot = dot::Dot::with_config(&graph, &[dot::Config::EdgeNoLabel]);
-        println!("{:?}", graph_dot);
+        fs::write("graph.dot", format!("{:?}", graph_dot)).unwrap();
 
-        let path = maximum_matching(&graph);
-        dbg!(path.len());
-        dbg!(path.nodes().collect::<Vec<_>>());
+        let start = self
+            .tiles
+            .into_iter()
+            .find(|(_, t)| *t == Tile::Start)
+            .unwrap();
+        let start = node_indexes.get(&start).unwrap();
+
+        let path = all_simple_paths::<Vec<_>, _>(&graph, *start, *start, 3, None)
+            .map(|p| p.len())
+            .max()
+            .unwrap();
+
+        println!("Answer: {}", (path - 1) / 2)
     }
 }
 
@@ -248,6 +261,6 @@ impl Tile {
 }
 
 fn main() {
-    let grid = Grid::from_str(include_str!("test1.txt"));
+    let grid = Grid::from_str(include_str!("test2.txt"));
     grid.process();
 }
