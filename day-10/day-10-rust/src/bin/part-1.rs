@@ -12,66 +12,58 @@ impl Grid {
         let tiles = input
             .lines()
             .enumerate()
-            .map(|(row, line)| {
+            .flat_map(|(row, line)| {
                 line.chars()
                     .map(Tile::from_char)
                     .enumerate()
                     .map(move |(col, tile)| ((row, col), tile))
             })
-            .flatten()
             .collect::<BTreeMap<_, _>>();
 
         Self { tiles }
     }
 
-    // fn find_start(&self) -> (usize, usize) {
-    //     for ((row, col), tile) in self.tiles.iter() {
-    //         match tile {
-    //             Tile::Start => return (*row, *col),
-    //             _ => continue,
-    //         }
-    //     }
-
-    //     unreachable!()
-    // }
-
     fn adjacent_tiles(
         &self,
         ((row, col), curr): ((usize, usize), Tile),
-    ) -> Vec<((Option<usize>, Option<usize>), Tile)> {
+    ) -> Vec<((usize, usize), Tile)> {
         let mut adjacents = Vec::with_capacity(4);
 
-        let top = row
+        let north = row
             .checked_sub(1)
             .and_then(|row| self.tiles.get(&(row, col)))
             .unwrap_or(&Tile::Ground);
-        if curr.connected_to_north(top) {
-            let key = (row.checked_sub(1), Some(col));
-            adjacents.push((key, *top))
+        if curr.connected_to_north(north) {
+            let key = row.checked_sub(1).map(|row| (row, col));
+            adjacents.push((key, *north))
         }
 
-        let bottom = self.tiles.get(&(row + 1, col)).unwrap_or(&Tile::Ground);
-        if curr.connected_to_south(bottom) {
-            let key = (Some(row + 1), Some(col));
-            adjacents.push((key, *bottom))
+        let south = self.tiles.get(&(row + 1, col)).unwrap_or(&Tile::Ground);
+        if curr.connected_to_south(south) {
+            let key = Some((row + 1, col));
+            adjacents.push((key, *south))
         }
 
-        let left = col
+        let west = col
             .checked_sub(1)
             .and_then(|col| self.tiles.get(&(row, col)))
             .unwrap_or(&Tile::Ground);
-        if curr.connected_to_west(left) {
-            let key = (Some(row), col.checked_sub(1));
-            adjacents.push((key, *left))
+        if curr.connected_to_west(west) {
+            let key = col.checked_sub(1).map(|col| (row, col));
+            adjacents.push((key, *west))
         }
 
-        let right = self.tiles.get(&(row, col + 1)).unwrap_or(&Tile::Ground);
-        if curr.connected_to_east(right) {
-            let key = (Some(row), Some(col + 1));
-            adjacents.push((key, *right))
+        let east = self.tiles.get(&(row, col + 1)).unwrap_or(&Tile::Ground);
+        if curr.connected_to_east(east) {
+            let key = Some((row, col + 1));
+            adjacents.push((key, *east))
         }
 
         adjacents
+            .into_iter()
+            .filter(|tile| tile.0.is_some())
+            .map(|tile| (tile.0.unwrap(), tile.1))
+            .collect()
     }
 
     fn process(&self) {
@@ -80,21 +72,16 @@ impl Grid {
         let mut node_indexes = HashMap::new();
 
         for curr in self.tiles.clone().into_iter() {
-            let curr_node = node_indexes
+            let curr_node = *node_indexes
                 .entry(curr)
-                .or_insert_with(|| graph.add_node(curr))
-                .clone();
+                .or_insert_with(|| graph.add_node(curr));
 
-            for ((row, col), tile) in self.adjacent_tiles(curr) {
-                if let (Some(row), Some(col)) = (row, col) {
-                    let adj = ((row, col), tile);
+            for adj in self.adjacent_tiles(curr) {
+                let adj_node = node_indexes
+                    .entry(adj)
+                    .or_insert_with(|| graph.add_node(adj));
 
-                    let adj_node = node_indexes
-                        .entry(adj)
-                        .or_insert_with(|| graph.add_node(adj));
-
-                    graph.add_edge(curr_node, *adj_node, 1);
-                }
+                graph.add_edge(curr_node, *adj_node, 1);
             }
         }
 
@@ -147,10 +134,7 @@ impl Tile {
             (EastWest, _) => false,
             (_, EastWest) => false,
 
-            (SouthEast, NorthWest) => true,
             (SouthEast, _) => false,
-
-            (SouthWest, NorthEast) => true,
             (SouthWest, _) => false,
 
             (NorthSouth, NorthSouth) => true,
@@ -182,10 +166,7 @@ impl Tile {
             (EastWest, _) => false,
             (_, EastWest) => false,
 
-            (NorthEast, SouthWest) => true,
             (NorthEast, _) => false,
-
-            (NorthWest, SouthEast) => true,
             (NorthWest, _) => false,
 
             (NorthSouth, NorthSouth) => true,
@@ -199,8 +180,8 @@ impl Tile {
             (SouthEast, _) => false,
 
             (SouthWest, NorthSouth) => true,
-            (SouthWest, SouthEast) => true,
-            (SouthWest, SouthWest) => true,
+            (SouthWest, NorthEast) => true,
+            (SouthWest, NorthWest) => true,
             (SouthWest, _) => false,
         }
     }
@@ -215,20 +196,18 @@ impl Tile {
             (_, Start) => true,
 
             (NorthSouth, _) => false,
+            (NorthEast, _) => false,
+            (SouthEast, _) => false,
 
             (EastWest, EastWest) => true,
             (EastWest, SouthEast) => true,
             (EastWest, NorthEast) => true,
             (EastWest, _) => false,
 
-            (NorthEast, _) => false,
-
             (NorthWest, EastWest) => true,
-            (NorthWest, NorthEast) => true,
             (NorthWest, SouthEast) => true,
+            (NorthWest, NorthEast) => true,
             (NorthWest, _) => false,
-
-            (SouthEast, _) => false,
 
             (SouthWest, EastWest) => true,
             (SouthWest, NorthEast) => true,
@@ -247,6 +226,8 @@ impl Tile {
             (_, Start) => true,
 
             (NorthSouth, _) => false,
+            (NorthWest, _) => false,
+            (SouthWest, _) => false,
 
             (EastWest, EastWest) => true,
             (EastWest, NorthWest) => true,
@@ -258,9 +239,6 @@ impl Tile {
             (NorthEast, SouthWest) => true,
             (NorthEast, _) => false,
 
-            (NorthWest, _) => false,
-            (SouthWest, _) => false,
-
             (SouthEast, EastWest) => true,
             (SouthEast, NorthWest) => true,
             (SouthEast, SouthWest) => true,
@@ -270,6 +248,6 @@ impl Tile {
 }
 
 fn main() {
-    let grid = Grid::from_str(include_str!("test2.txt"));
+    let grid = Grid::from_str(include_str!("test1.txt"));
     grid.process();
 }
