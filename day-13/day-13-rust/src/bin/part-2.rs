@@ -14,16 +14,6 @@ enum Item {
     Rock,
 }
 
-impl Item {
-    fn flip(&self) -> Self {
-        use Item::*;
-        match self {
-            Ash => Rock,
-            Rock => Ash,
-        }
-    }
-}
-
 fn parse_item(input: &str) -> IResult<&str, Item> {
     alt((
         map(complete::char('.'), |_| Item::Ash),
@@ -34,54 +24,100 @@ fn parse_item(input: &str) -> IResult<&str, Item> {
 #[derive(Debug)]
 struct Pattern {
     rows: Vec<Vec<Item>>,
-    cols: Vec<Vec<Item>>,
 }
 
 impl Pattern {
-    fn mirror_score(&self) -> usize {
-        let mirror_point =
-            |list2d: &Vec<Vec<Item>>| {
-                list2d
+    fn detect_horizontal_fold(&self) -> Option<usize> {
+        let result = self
+            .rows
+            .iter()
+            .enumerate()
+            .tuple_windows()
+            .filter(|((_, line_a), (_, line_b))| {
+                line_a == line_b
+                    || line_a
+                        .iter()
+                        .zip(line_b.iter())
+                        .filter(|(a, b)| a != b)
+                        .count()
+                        <= 1
+            })
+            .find_map(|((index_a, _), (index_b, _))| {
+                let lines_a = self.rows[0..=index_a]
                     .iter()
-                    .enumerate()
-                    .find(|(i, _)| {
-                        (0..list2d.len())
-                            .cartesian_product(0..list2d[0].len())
-                            .any(|(x, y)| {
-                                let (left, right) = list2d.split_at(*i);
+                    .map(|line| line.iter())
+                    .rev();
+                let lines_b = self.rows[index_b..].iter().map(|line| line.iter());
 
-                                if left.is_empty() || right.is_empty() {
-                                    false
-                                } else {
-                                    left.iter().enumerate().rev().zip(right).all(
-                                        |((curr_y, l), r)| {
-                                            l.iter().zip(r).enumerate().all(|(curr_x, (l, r))| {
-                                                let matching_pair = l == r;
-                                                let smudge =
-                                                    (x, y) == (curr_x, curr_y) && *l == r.flip();
-                                                matching_pair || smudge
-                                            })
-                                        },
-                                    )
-                                }
-                            })
-                    })
-                    .map(|(i, _)| i)
-            };
+                (lines_a
+                    .flatten()
+                    .zip(lines_b.flatten())
+                    .filter(|(a, b)| a != b)
+                    .count()
+                    == 1)
+                    .then_some(index_a + 1)
+            });
 
-        let row = mirror_point(&self.rows).map(|i| i * 100);
-        let col = mirror_point(&self.cols);
+        result.map(|i| i * 100)
+    }
 
-        row.or(col).expect("couldn;'t find mirroring col or row")
+    pub fn detect_vertical_fold(&self) -> Option<usize> {
+        let mut columns_iter_collection =
+            self.rows.iter().map(|line| line.iter()).collect::<Vec<_>>();
+
+        let columns = std::iter::from_fn(move || {
+            let mut items = vec![];
+            for iter in &mut columns_iter_collection {
+                match iter.next() {
+                    Some(item) => {
+                        items.push(item);
+                    }
+                    None => return None,
+                }
+            }
+            Some(items)
+        })
+        .collect::<Vec<Vec<_>>>();
+
+        let result = columns
+            .iter()
+            .enumerate()
+            .tuple_windows()
+            .filter(|((_, line_a), (_, line_b))| {
+                line_a == line_b
+                    || line_a
+                        .iter()
+                        .zip(line_b.iter())
+                        .filter(|(a, b)| a != b)
+                        .count()
+                        <= 1
+            })
+            .find_map(|((index_a, _), (index_b, _))| {
+                let lines_a = columns[0..=index_a].iter().rev();
+                let lines_b = columns[index_b..].iter();
+
+                (lines_a
+                    .flatten()
+                    .zip(lines_b.flatten())
+                    .filter(|(a, b)| a != b)
+                    .count()
+                    == 1)
+                    .then_some(index_a + 1)
+            });
+
+        result
+    }
+
+    fn mirror_score(&self) -> usize {
+        self.detect_horizontal_fold()
+            .or(self.detect_vertical_fold())
+            .expect("couldn't find reflection")
     }
 }
 
 fn parse_pattern(input: &str) -> IResult<&str, Pattern> {
     map(separated_list1(line_ending, many1(parse_item)), |rows| {
-        Pattern {
-            cols: transpose2(rows.clone()),
-            rows,
-        }
+        Pattern { rows }
     })(input)
 }
 
@@ -107,21 +143,8 @@ fn parse_patterns(input: &str) -> IResult<&str, Patterns> {
     )(input)
 }
 
-fn transpose2<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
-    assert!(!v.is_empty());
-    let len = v[0].len();
-    let mut iters: Vec<_> = v.into_iter().map(|n| n.into_iter()).collect();
-    (0..len)
-        .map(|_| {
-            iters
-                .iter_mut()
-                .map(|n| n.next().unwrap())
-                .collect::<Vec<T>>()
-        })
-        .collect()
-}
-
 fn main() {
-    let patterns = Patterns::from_str(include_str!("test.txt"));
+    let patterns = Patterns::from_str(include_str!("input.txt"));
+
     println!("Answer: {}", patterns.mirror_score());
 }
