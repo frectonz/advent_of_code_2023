@@ -60,21 +60,21 @@ module Platform = struct
       print_newline ()
     done
 
-  let not_tilted_on dir { positions; _ } =
-    let found_untilted =
-      Hashtbl.fold
-        (fun curr pos found_untilted ->
-          if found_untilted then found_untilted
-          else
-            let next =
-              Hashtbl.find_opt positions (dir curr)
-              |> Option.value ~default:Position.ImmovableRock
-            in
-            if pos = Position.MoveableRock && next = Position.Empty then true
-            else false)
-        positions false
+  let not_tilted_on dir { positions; columns; rows } =
+    let final = rows * columns in
+    let rec inner num =
+      if num >= final then false
+      else
+        let curr = { row = num / columns; col = num mod columns } in
+        let pos = Hashtbl.find positions curr in
+        let next =
+          Hashtbl.find_opt positions (dir curr)
+          |> Option.value ~default:Position.ImmovableRock
+        in
+        if pos = Position.MoveableRock && next = Position.Empty then true
+        else inner (num + 1)
     in
-    found_untilted
+    inner 0
 
   let shift_on dir { rows; columns; positions } =
     for y = 0 to rows - 1 do
@@ -103,12 +103,20 @@ module Platform = struct
     tilt south platform;
     tilt east platform
 
-  let rec repeat_cycle n platform =
+  let copy platform =
+    { platform with positions = Hashtbl.copy platform.positions }
+
+  let rec repeat_cycle n cache platform =
     if n <= 0 then platform
-    else (
-      cycle platform;
-      n |> string_of_int |> print_endline;
-      repeat_cycle (n - 1) platform)
+    else
+      match Hashtbl.find_opt cache platform with
+      | Some in_cache -> repeat_cycle (n - 1) cache in_cache
+      | None ->
+          let _ = n |> string_of_int |> print_endline in
+          let original = copy platform in
+          cycle platform;
+          Hashtbl.add cache original (copy platform);
+          repeat_cycle (n - 1) cache platform
 
   let calculate_load { positions; rows; _ } =
     Hashtbl.fold
@@ -123,6 +131,6 @@ end
 let read_file file = In_channel.with_open_bin file In_channel.input_all
 
 let () =
-  read_file "test.txt" |> String.trim |> Platform.parse
-  |> Platform.repeat_cycle 3 |> Platform.calculate_load |> string_of_int
-  |> print_endline
+  read_file "input.txt" |> String.trim |> Platform.parse
+  |> Platform.repeat_cycle 1000 (Hashtbl.create 300)
+  |> Platform.calculate_load |> string_of_int |> print_endline
