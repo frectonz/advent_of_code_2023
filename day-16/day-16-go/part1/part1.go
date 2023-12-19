@@ -47,11 +47,18 @@ func main() {
 	queue := make([]Beam, 1)
 	queue[0] = Beam{Pos{0, -1}, Right}
 
-	for len(queue) != 0 {
-		fmt.Println(len(energized))
+	visisted := map[string]bool{}
 
+	for len(queue) != 0 {
 		curr := queue[0]
 		queue = queue[1:]
+
+		key := fmt.Sprintf("%d-%d-%d", curr.dir, curr.pos.row, curr.pos.col)
+		if visisted[key] {
+			continue
+		} else {
+			visisted[key] = true
+		}
 
 		next := curr.pos
 		switch curr.dir {
