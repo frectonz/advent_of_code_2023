@@ -39,6 +39,11 @@
             gopls
 
             deno
+
+            mypy
+            ruff
+            python3
+            python311Packages.python-lsp-server
           ];
         };
 
