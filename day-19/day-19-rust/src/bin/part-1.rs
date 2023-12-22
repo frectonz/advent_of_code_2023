@@ -61,7 +61,7 @@ impl Workflow {
                 Some(Accepted) => return Accepted,
                 Some(Rejected) => return Rejected,
                 Some(Pointer(name)) => {
-                    let workflow = workflows.get(&name).unwrap();
+                    let workflow = workflows.get(name).unwrap();
                     return workflow.execute(part, workflows);
                 }
                 None => {}

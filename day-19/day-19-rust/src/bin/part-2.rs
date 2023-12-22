@@ -91,12 +91,10 @@ impl Condition {
                     }
                 }
             }
+        } else if self.comp.apply(left, self.right) {
+            ApplyResult::Passed
         } else {
-            if self.comp.apply(left, self.right) {
-                ApplyResult::Passed
-            } else {
-                ApplyResult::Failed
-            }
+            ApplyResult::Failed
         }
     }
 }
